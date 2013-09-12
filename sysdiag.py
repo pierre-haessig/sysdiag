@@ -17,31 +17,33 @@ class System(object):
         # Parent system, if any (None for top-level):
         self.parent = None
         # Children systems, if any (None for leaf-level):
-        self.subsystems = {}
-        self.ports = {}
+        self.subsystems = []
+        self.ports = []
         self.params = {}
-        
+    
     def add_port(self, port):
         '''add a Port to the System'''
         # extract the port's name
         name = port.name
-        if name in self.ports:
+        port_names = [p.name for p in self.ports]
+        if name in port_names:
             raise ValueError("port name '{}' already exists in {:s}!".format(
                               name, repr(self))
                              )
         # Add parent relationship and add to the ports dict:
         port.system = self
-        self.ports[name] = port
+        self.ports.append(port)
     
     def add_subsystem(self, subsys):
         name = subsys.name
-        if name in self.subsystems:
+        subsys_names = [s.name for s in self.subsystems]
+        if name in subsys_names:
             raise ValueError("system name '{}' already exists in {:s}!".format(
                               name, repr(self))
                              )
         # Add parent relationship and add to the ports dict:
         subsys.parent = self
-        self.subsystems[name] = subsys
+        self.subsystems.append(subsys)
             
     def __str__(self):
         s = "{:s} '{:s}'".format(self.__class__.__name__, self.name)
@@ -66,6 +68,10 @@ class Port(object):
         self.name = name
         self.type = ptype
         self.system = None
+        self.wire = None
+    
+    def __repr__(self):
+        return 'Port({:s}, {:s})'.format(repr(self.name), repr(self.type))
     
     
 class Wire(object):
@@ -74,4 +80,16 @@ class Wire(object):
     def __init__(self, name, wtype):
         self.name = name
         self.type = wtype
-        self.system = None
+        self.ports = []
+    
+    def is_connect_allowed(self, port):
+        return port.type == self.type
+    
+    def connect_port(self, port):
+        if not self.is_connect_allowed(port):
+            raise ValueError('Port connection is not allowed!')
+        # Add parent relationship:
+        port.wire = self
+        self.ports.append(port)
+            
+        

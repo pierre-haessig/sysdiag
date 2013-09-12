@@ -5,3 +5,8 @@ TODO list
 (sept 2013)
 Use traits to automate some checking operations.
 In particular for system's parameters
+
+(sept 2013) DONE
+Use lists instead of dict to hold references to subsystems and ports.
+Advantage: no duplication of the `name` information.
+
