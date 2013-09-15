@@ -10,3 +10,14 @@ In particular for system's parameters
 Use lists instead of dict to hold references to subsystems and ports.
 Advantage: no duplication of the `name` information.
 
+(sept 2013)
+Manage parent relationship when connecting blocks. Check that they belong
+to the same system. If one parent system is None, re-parent it. If parents are
+different, raise an ???Error.
+
+(sept 2013)
+Implement parent relationship for wires
+(wires should/(or not?) have the system which subsystems they connect as parent)
+
+(sept 2013)
+Implement incidence list retrieval

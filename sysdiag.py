@@ -21,6 +21,11 @@ class System(object):
         self.ports = []
         self.params = {}
     
+    @property
+    def ports_dict(self):
+        '''list of ports seen as a dict were names are the keys'''
+        return {p.name:p for p in self.ports}
+        
     def add_port(self, port):
         '''add a Port to the System'''
         # extract the port's name
@@ -64,6 +69,8 @@ class Port(object):
     Each port has a `type` which only allowsthe connection of a Wire
     of the same type.
     '''
+    direction = 'none'
+    
     def __init__(self, name, ptype):
         self.name = name
         self.type = ptype
@@ -71,9 +78,25 @@ class Port(object):
         self.wire = None
     
     def __repr__(self):
-        return 'Port({:s}, {:s})'.format(repr(self.name), repr(self.type))
+        return '{:s}({:s}, {:s})'.format(self.__class__.__name__,
+                     repr(self.name), repr(self.type))
+
+
+class InputPort(Port):
+    '''Input Port'''
+    direction = 'in'
     
+    def __init__(self, name, ptype=''):
+        super(InputPort, self).__init__(name, ptype)    
+
+class OutputPort(Port):
+    '''Output Port'''
+    direction = 'out'
     
+    def __init__(self, name, ptype=''):
+        super(OutputPort, self).__init__(name, ptype)    
+
+
 class Wire(object):
     '''Wire enables the interconnection of several Systems
     through their Ports'''
@@ -83,7 +106,11 @@ class Wire(object):
         self.ports = []
     
     def is_connect_allowed(self, port):
-        return port.type == self.type
+        if not self.type:
+            # untyped wire: connection is always possible
+            return True
+        else:
+            return port.type == self.type
     
     def connect_port(self, port):
         if not self.is_connect_allowed(port):
@@ -92,4 +119,36 @@ class Wire(object):
         port.wire = self
         self.ports.append(port)
             
-        
+
+
+class SignalWire(Wire):
+    '''Signal Wire for the interconnection of several Systems
+    through their Input and Output Ports.
+    
+    Each SignalWire can be connected to a unique Output Port (signal source)
+    and several Input Ports (signal sinks)
+    '''
+    def __init__(self, name, wtype=''):
+        super(SignalWire, self).__init__(name, wtype)        
+    
+    def is_connect_allowed(self, port):
+        if port.direction == 'in':
+            # many signal sinks are allowed
+            return super(SignalWire, self).is_connect_allowed(port)
+        elif port.direction == 'out':
+            # check that there is not already a signal source
+            out_ports = [p for p in self.ports if p.direction=='out']
+            if out_ports:
+                return False
+            else:
+                return super(SignalWire, self).is_connect_allowed(port)
+        else:
+            # Not an input or output Port
+            return False
+    
+    def connect_port(self, port):
+        if not self.is_connect_allowed(port):
+            raise ValueError('Port connection is not allowed!')
+        # Add parent relationship:
+        port.wire = self
+        self.ports.append(port) 
