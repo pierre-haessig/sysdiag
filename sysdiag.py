@@ -147,6 +147,10 @@ class Port(object):
         cls_name = self.__class__.__name__
         s = '{:s}({:s}, {:s})'.format(cls_name, repr(self.name), repr(self.type))
         return s
+    
+    def __str__(self):
+        s = repr(self) + ' of ' + repr(self.system)
+        return s
 
 
 class InputPort(Port):

@@ -5,6 +5,7 @@ Pierre Haessig — September 2013
 """
 
 from __future__ import division, print_function
+import numpy as np
 
 from sysdiag import System, InputPort, OutputPort, SignalWire
 
@@ -50,8 +51,10 @@ class Summation(System):
         # flush the any existing list:
         self._op = []
         
-        while  len(self.ports)>0:
-            self.del_port(self.ports[0])
+        # Remove the input ports:
+        in_ports = [p for p in self.ports if p.direction=='in']
+        for p in in_ports:
+            self.del_port(p)
         
         for i,op_i in enumerate(ops):
             if not op_i in self.VALID_OPS:
@@ -89,4 +92,32 @@ def connect_systems(source, dest, s_pname='out', d_pname='in'):
     w.connect_port(s_port)
     w.connect_port(d_port)
     return w
+
+def incidence_matrix(syst):
+    '''computes the incidence matrix of the system `syst` taking into account
+    the IO Ports (Port direction 'in' and 'out').
+    An ouput port yields +1, an input -1
+    '''
+    nw = len(syst.wires)
+    ns = len(syst.subsystems)
+    inc_mat = np.zeros((nw, ns), dtype=np.int8)
+    # build a Look-up Table for wire indices:
+    wires_ind = {w:i for i,w in enumerate(syst.wires)}
+    
+    for s_ind, s in enumerate(syst.subsystems):
+        for p in s.ports:
+            if p.wire is None:
+                print('Warning: unconnected port {:s}'.format(str(p)))
+                continue # (unconnected port)
+            # find the index of the Port's wire
+            w_ind = wires_ind[p.wire]
+            # Put an entry in the incidence matrix:
+            if p.direction == 'out':
+                inc_mat[w_ind, s_ind] = 1
+            elif p.direction == 'in':
+                inc_mat[w_ind, s_ind] = -1
+    
+    return inc_mat
+            
+            
     

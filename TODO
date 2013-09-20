@@ -19,7 +19,7 @@ different, raise an ???Error.
 Implement parent relationship for wires
 (wires should/(or not?) have the system which subsystems they connect as parent)
 
-(sept 2013)
+(sept 2013) DONE (basic version for signal blocks and wires)
 Implement incidence list retrieval
 
 (sept 2013)
