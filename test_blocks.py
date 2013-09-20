@@ -17,12 +17,13 @@ root.add_subsystem(TF1)
 root.add_subsystem(TF2)
 
 # Create one wire:
-w = blocks.SignalWire('w1')
+w = blocks.SignalWire('w1', parent=root)
 
 w.connect_port(TF1.ports_dict['out']) # output of TF1
 w.connect_port(TF2.ports_dict['in']) # input of TF2
 
 print(root)
+print('')
 print(TF1)
 
 

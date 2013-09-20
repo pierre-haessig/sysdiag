@@ -1,0 +1,30 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+""" Diagram of a closed loop control
+
+Pierre Haessig — September 2013
+"""
+
+from __future__ import division, print_function
+
+import blocks
+
+root = blocks.System('CL control')
+
+# Main blocks:
+Src = blocks.Source('src', root)
+K = 2; Ti = .2
+Ctrl = blocks.TransferFunction('controller', [1, K*Ti],[0, Ti], root) # PI control
+Plant = blocks.TransferFunction('plant', [1], [0, 1], root) # integrator
+Cmp = blocks.Summation('compare', ops = ['+','-'], parent = root)
+
+
+w0 = blocks.connect_systems(Src, Cmp, d_pname='in0')
+w1 = blocks.connect_systems(Ctrl, Plant)
+w2 = blocks.connect_systems(Plant, Cmp, d_pname='in1')
+
+
+print(root)
+
+
+

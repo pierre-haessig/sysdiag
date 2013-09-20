@@ -10,14 +10,18 @@ In particular for system's parameters
 Use lists instead of dict to hold references to subsystems and ports.
 Advantage: no duplication of the `name` information.
 
-(sept 2013)
+(sept 2013) DONE (but do not implement reparenting)
 Manage parent relationship when connecting blocks. Check that they belong
 to the same system. If one parent system is None, re-parent it. If parents are
 different, raise an ???Error.
 
-(sept 2013)
+(sept 2013) DONE (systems now have a `wires` list attribute)
 Implement parent relationship for wires
 (wires should/(or not?) have the system which subsystems they connect as parent)
 
 (sept 2013)
 Implement incidence list retrieval
+
+(sept 2013)
+Make `connect_systems` function more generic rather than signal-specfic
+-> ability to have it derived in the elec module
