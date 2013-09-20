@@ -11,10 +11,10 @@ def _create_name(name_list, base):
     
     Useful for automatic creation of subsystems or wires
     '''
-    base = str(base)
+    base = str(base).strip()
     if base == '':
-        # avoid empty str, even if it's not forbidden
-        base = 'S'
+        # avoid having '' as name (although it would not break the code...)
+        raise ValueError('base name should not be empty!')
     if base not in name_list:
         return base
     
