@@ -10,10 +10,16 @@ import numpy as np
 from sysdiag import System, InputPort, OutputPort, SignalWire
 
 class Source(System):
-    '''generic signal source'''
-    def __init__(self, name='Src', parent=None):
+    '''generic signal input source ("generator")'''
+    def __init__(self, name='In', parent=None):
         super(Source, self).__init__(name, parent)
         self.add_port(OutputPort('out'))
+
+class Sink(System):
+    '''generic signal output sink'''
+    def __init__(self, name='Out', parent=None):
+        super(Sink, self).__init__(name, parent)
+        self.add_port(InputPort('in'))
     
 class SISOSystem(System):
     '''generic Single Input Single Output (SISO) system
