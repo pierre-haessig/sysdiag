@@ -65,6 +65,28 @@ def test_add_ports():
     with assert_raises(ValueError):
         r.add_port(p11)
 
+def test_connect_port():
+    '''check the connect_port method of Wire'''
+    r = sysdiag.System('root')
+    s1 = sysdiag.System('s1', parent=r)
+    p1 = sysdiag.Port('p1', 'type1')
+    s1.add_port(p1)
+    
+    w1 = sysdiag.Wire('w1', 'type1', parent=r)
+    w2 = sysdiag.Wire('w2', 'type1', parent=r)
+    w3 = sysdiag.Wire('w3', 'other type', parent=r)
+    
+    # failure of wrong type:
+    with assert_raises(TypeError):
+        w3.connect_port(p1)
+    
+    # wire connection that works:
+    w1.connect_port(p1)
+    assert_is(p1.wire, w1)
+    
+    # failure if a port is already taken:
+    with assert_raises(ValueError):
+        w2.connect_port(p1)
 
 def test_connect_systems():
     '''check the connect_systems routine'''
@@ -93,3 +115,5 @@ def test_connect_systems():
     w2 = sysdiag.connect_systems(s1,s2, 'p1', 'p2')
     assert_is(w2,w1)
     assert_equal(len(w1.ports), 2)
+
+

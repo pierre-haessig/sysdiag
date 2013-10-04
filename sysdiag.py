@@ -201,6 +201,19 @@ class Wire(object):
         '''
         assert port_level in ['sibling', 'parent']
         
+        # Port availability (is there already a wire connected?):
+        if port_level == 'sibling':
+            connected_wire = port.wire
+        elif port_level == 'parent':
+            connected_wire = port.internal_wire
+        if connected_wire is not None:
+            if raise_error:
+                    raise ValueError('port is already connected to '+\
+                                     '{:s}!'.format(repr(connected_wire)))
+            else:
+                return False
+
+        # Check parent relationship:
         if port_level == 'sibling':
             # Check that the wire and port.system are siblings:
             if self.parent is not port.system.parent:
@@ -215,7 +228,7 @@ class Wire(object):
                     raise ValueError('port.system should be the parent of the wire!')
                 else:
                     return False
-              
+
         # Wire-Port Type checking:
         if self.type == '':
             # untyped wire: connection is always possible
