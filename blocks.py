@@ -7,6 +7,7 @@ Pierre Haessig — September 2013
 from __future__ import division, print_function
 import numpy as np
 
+import sysdiag
 from sysdiag import System, InputPort, OutputPort, SignalWire
 
 class Source(System):
@@ -78,25 +79,9 @@ def connect_systems(source, dest, s_pname='out', d_pname='in'):
     
     Returns: the wire
     '''
-    # 1) find the ports
-    s_port = source.ports_dict[s_pname]
-    d_port =   dest.ports_dict[d_pname]
- 
-    # 2) find a prexisting wire:
-    w = None
-    if s_port.wire is not None:
-        w = s_port.wire
-    elif d_port.wire is not None:
-        w = d_port.wire
-    else:        
-        parent = s_port.system.parent
-        wname = parent.create_name('wire','W')
-        wtype = s_port.type
-        w = SignalWire(wname, wtype, parent)
-    
-    # 3) Make the connection:
-    w.connect_port(s_port)
-    w.connect_port(d_port)
+    # Use the generic function:
+    w = sysdiag.connect_systems(source, dest, s_pname, d_pname,
+                                wire_cls=SignalWire)
     return w
 
 def incidence_matrix(syst):
