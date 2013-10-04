@@ -48,6 +48,10 @@ def test_simple_connection():
     w1.connect_port(tf1.ports_dict['out']) # output of tf1
     w1.connect_port(tf2.ports_dict['in']) # input of tf2
 
+    # Only one output port can be connected to a SignalWire:
+    with assert_raises(ValueError):
+        w1.connect_port(tf3.ports_dict['out'])
+    
     # Automated connection:
     w2 = blocks.connect_systems(tf2,tf3)
 

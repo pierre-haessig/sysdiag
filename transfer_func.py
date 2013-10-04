@@ -13,12 +13,143 @@ from sympy import symbols, Eq, simplify
 
 import blocks
 
-def transfer_func(syst, depth='unlimited'):
-    '''Compute the transfer function of `syst`'''
-    pass
-
 from closed_loop_control import root as r
 
+def laplace_output(syst, input_var):
+    '''Laplace tranform of the output of the block `syst`.
+    
+    The list of input variables should match the list of input ports.
+    '''
+    in_ports  = [p for p in syst.ports if p.direction=='in']
+    out_ports = [p for p in syst.ports if p.direction=='out']
+    n_in = len(in_ports)
+    n_out = len(out_ports)
+    assert len(input_var) == n_in
+
+    ### Model the system of the block
+    output_expr = []
+    
+    # 1) Model a Summation block:
+    if type(syst) is blocks.Summation:
+        sum_terms = []
+        for op, var in zip(s._op, input_var):
+            if op == '+':
+                sum_terms.append(+var)
+            elif op == '-':
+                sum_terms.append(-var)
+            else:
+                raise ValueError('unknow operator')
+        # end for
+        output_expr.append(sympy.Add(*sum_terms))
+
+    # 2) Model a TransferFunction block:
+    elif type(syst) is blocks.TransferFunction:
+        assert n_in == 1
+        num = syst.params['num']
+        den = syst.params['den']
+        # Convert to Laplace:
+        s = symbols('s')
+        num_s = [n*s**i for i,n in enumerate(num)]
+        den_s = [d*s**i for i,d in enumerate(den)]
+        TF = sympy.Add(*num_s)/sympy.Add(*den_s)
+        output_expr.append(TF*input_var[0])
+
+    # Model a generic IO block:
+    else:
+        for p_out in out_ports:
+            out = 0
+            for p_in, var in zip(in_ports, input_var):
+                # Generate a symbol with an *hopefully* unique name:
+                TF_name = 'TF_{}'.format(syst.name)
+                if n_in > 1 or n_out>1:
+                    TF_name += '{}_{}'.format(p_in.name, p_out.name)
+                TF = symbols(TF_name)
+                out += TF*var
+            output_expr.append(out)
+            # end for each input
+        # end for each ouput
+
+    return output_expr
+# end laplace_output
+
+### test laplace_output
+u = symbols('u')
+siso = blocks.SISOSystem('SISO')
+print(laplace_output(siso, [u]))
+ctrl = r.subsystems[1]
+print(laplace_output(ctrl, [u]))
+
+
+
+def transfer_syst(syst, depth='unlimited'):
+    '''Compute the transfer function of `syst`'''
+    # Analyze the IO Ports: of `syst`
+    in_ports  = [p for p in syst.ports if p.direction=='in']
+    out_ports = [p for p in syst.ports if p.direction=='out']
+    n_in = len(in_ports)
+    n_out = len(out_ports)
+    # Initialize the input and output variables
+    # (more variables may come from the subsystem analysis)
+    input_var = [symbols('U_{}_{}'.format(syst.name, p.name)) for p in in_ports]
+    output_var = [symbols('Y_{}_{}'.format(syst.name, p.name)) for p in out_ports]
+    
+    if depth==0:
+        output_expr = laplace_output(syst, input_var)
+        return [Eq(var, tf) for var,tf in zip(output_var,output_expr)]
+    
+    # else depth>0: analyse the subsystems
+    
+    # 1) Generate wire variables: (those to be eliminated)
+    wires_var = {w:symbols('W_' + w.name) for w in syst.wires}
+    
+    # 2) Parse the subsystems
+    subsys_eqs = []
+    for subsys in syst.subsystems:
+        sub_depth = 'unlimited' if depth=='unlimited' \
+                                else (depth - 1)
+        # Input and Output Wires
+        sub_wire_in  = [p.wire for p in subsys.ports if p.direction=='in']
+        sub_wire_out = [p.wire for p in subsys.ports if p.direction=='out']
+        # retreive the SymPy variables of the wires:
+        sub_var_in = [wires_var[w] for w in sub_wire_in]
+        sub_var_out = [wires_var[w] for w in sub_wire_out]
+        
+        # Manage the different blocks
+        if isinstance(subsys, blocks.Source):
+            # Source block
+            assert len(sub_var_in) == 0
+            assert len(sub_var_out) == 1
+            source_var = symbols('U_' + s.name)
+            input_var.append(source_var)
+            # Output equation: W_out = U
+            subsys_eqs.append(Eq(sub_var_out[0], source_var))
+
+        elif isinstance(subsys, blocks.Sink):
+            assert len(sub_var_out) == 0
+            assert len(sub_var_in) == 1
+            sink_var = symbols('Y_' + s.name)
+            output_var.append(sink_var)
+            # Output equation: Y = W_in
+            print(sink_var, sub_wire_in[0])
+            subsys_eqs.append(Eq(sink_var, sub_var_in[0]))
+
+#        elif type(s) is blocks.TransferFunction:
+#            TF_s = symbols('H_' + s.name)
+#            TF[s] = TF_s
+#            assert len(w_in) == 1
+#            Out_s = TF_s * w_in[0]
+        
+        elif sub_depth == 0:
+            output_expr = laplace_output(subsys, sub_wire_in)
+            subsys_eqs.extend([Eq(var, tf) for var,tf in zip(sub_wire_out, output_expr)])
+        else:
+            # Recursive call:
+            output_eq = transfer_syst(subsys, depth=sub_depth)
+            # TODO: connect the ports variables to the equation
+            # or indicate the output equation
+
+    # end for each subsystem
+    return subsys_eqs
 
 In  = []
 Out = []
