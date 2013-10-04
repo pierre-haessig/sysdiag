@@ -14,27 +14,56 @@ except ImportError:
     sys.path.append('..')
     import blocks
 
+
 def test_source():
     '''test the Source block class'''
     src = blocks.Source('src')
-    # Check the ports:
+    # Check the ports:
     assert_equal(len(src.ports),  1)
     p = src.ports[0]
     assert_is_instance(p, blocks.OutputPort)
     assert_equal(p.direction, 'out')
-  
+
+
 def test_sink():
     '''test the Sink block class'''
     sink = blocks.Sink('sink')
-    # Check the ports:
+    # Check the ports:
     assert_equal(len(sink.ports),  1)
     p = sink.ports[0]
     assert_is_instance(p, blocks.InputPort)
     assert_equal(p.direction, 'in')  
 
+
+def test_simple_connection():
+    '''Connect a few TransferFunction blocks'''
+    r = blocks.System('root')
+    # Create three TF blocks
+    tf1 = blocks.TransferFunction('TF1', parent=r)
+    tf2 = blocks.TransferFunction('TF2', parent=r)
+    tf3 = blocks.TransferFunction('TF3', parent=r)
+
+    # Manual connection tf1 -> tf2:
+    w1 = blocks.SignalWire('w1', parent=r)
+    w1.connect_port(tf1.ports_dict['out']) # output of tf1
+    w1.connect_port(tf2.ports_dict['in']) # input of tf2
+
+    # Automated connection:
+    w2 = blocks.connect_systems(tf2,tf3)
+
+    # Check connection:
+    assert tf2.ports_dict['out'] in w2.ports
+    assert tf3.ports_dict['in'] in w2.ports
+
+    # Print status:
+    print(r)
+    print('')
+    print(tf1)
+
+
 def test_closed_loop_diagram():
     '''Create a closed loop diagram.
-    
+
     Not many checks, except that it works fine!
     '''
     root = blocks.System('top level system')
@@ -47,7 +76,7 @@ def test_closed_loop_diagram():
     plant = blocks.TransferFunction('plant', [1], [0, 1], root) # integrator
     comp = blocks.Summation('compare', ops = ['+','-'], parent = root)
     out = blocks.Sink(parent=root)
-    
+
     assert_is(ctrl.parent, root)
 
     # Connect the blocks together
