@@ -9,11 +9,9 @@ Pierre Haessig — September 2013
 
 from __future__ import division, print_function
 import sympy
-from sympy import symbols, Eq, simplify
+from sympy import symbols, Eq
 
 import blocks
-
-from closed_loop_control import root as r
 
 def laplace_output(syst, input_var):
     '''Laplace tranform of the output of the block `syst`.
@@ -32,7 +30,7 @@ def laplace_output(syst, input_var):
     # 1) Model a Summation block:
     if type(syst) is blocks.Summation:
         sum_terms = []
-        for op, var in zip(s._op, input_var):
+        for op, var in zip(syst._operators, input_var):
             if op == '+':
                 sum_terms.append(+var)
             elif op == '-':
@@ -72,17 +70,12 @@ def laplace_output(syst, input_var):
     return output_expr
 # end laplace_output
 
-### test laplace_output
-u = symbols('u')
-siso = blocks.SISOSystem('SISO')
-print(laplace_output(siso, [u]))
-ctrl = r.subsystems[1]
-print(laplace_output(ctrl, [u]))
-
-
-
-def transfer_syst(syst, depth='unlimited'):
-    '''Compute the transfer function of `syst`'''
+def transfer_syst(syst, input_var=None, depth='unlimited'):
+    '''Compute the transfer function of `syst`
+    
+    Returns `output_expr`, `output_var`
+    `output_var` is of length n_out + number of internal sink blocks
+    '''
     # Analyze the IO Ports: of `syst`
     in_ports  = [p for p in syst.ports if p.direction=='in']
     out_ports = [p for p in syst.ports if p.direction=='out']
@@ -90,12 +83,19 @@ def transfer_syst(syst, depth='unlimited'):
     n_out = len(out_ports)
     # Initialize the input and output variables
     # (more variables may come from the subsystem analysis)
-    input_var = [symbols('U_{}_{}'.format(syst.name, p.name)) for p in in_ports]
+    if input_var is None:
+        input_var = [symbols('U_{}_{}'.format(syst.name, p.name)) for p in in_ports]
+    else:
+        assert len(input_var) == n_in
     output_var = [symbols('Y_{}_{}'.format(syst.name, p.name)) for p in out_ports]
     
+    output_expr = []
+    
     if depth==0:
+        #output_expr = laplace_output(syst, input_var)
+        #return [Eq(var, tf) for var,tf in zip(output_var,output_expr)]
         output_expr = laplace_output(syst, input_var)
-        return [Eq(var, tf) for var,tf in zip(output_var,output_expr)]
+        return output_expr, output_var, input_var
     
     # else depth>0: analyse the subsystems
     
@@ -119,7 +119,7 @@ def transfer_syst(syst, depth='unlimited'):
             # Source block
             assert len(sub_var_in) == 0
             assert len(sub_var_out) == 1
-            source_var = symbols('U_' + s.name)
+            source_var = symbols('U_' + subsys.name)
             input_var.append(source_var)
             # Output equation: W_out = U
             subsys_eqs.append(Eq(sub_var_out[0], source_var))
@@ -127,118 +127,67 @@ def transfer_syst(syst, depth='unlimited'):
         elif isinstance(subsys, blocks.Sink):
             assert len(sub_var_out) == 0
             assert len(sub_var_in) == 1
-            sink_var = symbols('Y_' + s.name)
+            sink_var = symbols('Y_' + subsys.name)
             output_var.append(sink_var)
             # Output equation: Y = W_in
-            print(sink_var, sub_wire_in[0])
             subsys_eqs.append(Eq(sink_var, sub_var_in[0]))
-
-#        elif type(s) is blocks.TransferFunction:
-#            TF_s = symbols('H_' + s.name)
-#            TF[s] = TF_s
-#            assert len(w_in) == 1
-#            Out_s = TF_s * w_in[0]
         
-        elif sub_depth == 0:
-            output_expr = laplace_output(subsys, sub_wire_in)
-            subsys_eqs.extend([Eq(var, tf) for var,tf in zip(sub_wire_out, output_expr)])
         else:
             # Recursive call:
-            output_eq = transfer_syst(subsys, depth=sub_depth)
-            # TODO: connect the ports variables to the equation
-            # or indicate the output equation
-
+            sub_output_expr, sub_output_var, sub_input_var = transfer_syst(subsys,
+                                                    sub_var_in, depth=sub_depth)
+            # TODO: manage extraneous output var/expressions
+            print(sub_output_var[n_out:])
+            # and extraneous input variables
+            subsys_eqs.extend([Eq(var, tf) for var,tf in
+                               zip(sub_var_out, sub_output_expr)])
     # end for each subsystem
-    return subsys_eqs
-
-In  = []
-Out = []
-W = {} # wires
-TF = {}
-
-diagram_eqs = []
-
-def wires_to_sym(w):
-    if w not in W:
-        # Add wire w to the dict W:
-        W[w] = symbols('W_' + w.name)
-    return W[w]
-
-for s in r.subsystems:
-    print(s)
     
-    # Output Wires
-    w_out = [p.wire for p in s.ports if p.direction=='out']
-    if len(w_out) == 0:
-        w_out = None
-    else:
-        assert len(w_out) == 1
-        w_out = w_out[0]
-        # Convert Wires to SymPy symbols
-        w_out = wires_to_sym(w_out)
-    
-    # Input Wires
-    w_in  = [p.wire for p in s.ports if p.direction=='in']
-    # Convert Wires to SymPy symbols
-    w_in  = [wires_to_sym(w) for w in w_in]
-    
-    # Manage the different blocks
-    if not w_in:
-        # Source block
-        assert type(s) is blocks.Source
-        In_s = symbols('U_' + s.name)
-        In.append(In_s)
-        # Output equation:
-        Out_s = In_s
-    
-    elif type(s) is blocks.Summation:
-        sum_terms = []
-        for op, w in zip(s._op, w_in):
-            if op == '+':
-                sum_terms.append(+w)
-            elif op == '-':
-                sum_terms.append(-w)
-            else:
-                raise ValueError('unknow operator')
+    # Add the output port equations
+    # TODO...
+    #subsys_eqs.append(Eq())
         
-        Out_s = sympy.Add(*sum_terms)
-    elif type(s) is blocks.TransferFunction:
-        TF_s = symbols('H_' + s.name)
-        TF[s] = TF_s
-        assert len(w_in) == 1
-        Out_s = TF_s * w_in[0]
-    elif type(s) is blocks.Sink:
-        assert w_out is None
-        assert len(w_in) == 1
-        Out_s = symbols('Y_' + s.name)
-        Out.append(Out_s)
-        diagram_eqs.append(Eq(Out_s, w_in[0]))
-    else:
-        raise ValueError('unknown block!')
+    # Solve the equations:
+    print(subsys_eqs)
+    eqs_sol = sympy.solve(subsys_eqs, wires_var.values() + output_var)
+    print(eqs_sol)
+    # filter out the wire variables
+    output_expr = [eqs_sol[var] for var in eqs_sol if var in output_var]
     
-    # Store IO equation:
-    if w_out is not None:
-        diagram_eqs.append(Eq(w_out, Out_s))
+    return output_expr, output_var, input_var
+# end transfer_syst
+
+
+if __name__ == '__main__':
+    # Example tranfer function modeling of a closed loop system
+
+    # Main blocks:
+    root = blocks.System('top level system')
+    src = blocks.Source('src', root)
+    K = 2
+    Ti = 0.2
+    #ctrl = blocks.TransferFunction('controller', [1, K*Ti],[0, Ti], root) # PI control
+    ctrl = blocks.SISOSystem('controller', root) # generic controller
+    #plant = blocks.TransferFunction('plant', [1], [0, 1], root) # integrator
+    plant = blocks.SISOSystem('plant', root) # generic plant
+    comp = blocks.Summation('compare', ops = ['+','-'], parent = root)
+    out = blocks.Sink('out',parent=root)
+    # Connect the blocks together
+    w0 = blocks.connect_systems(src, comp, d_pname='in0')
+    w1 = blocks.connect_systems(comp, ctrl)
+    w2 = blocks.connect_systems(ctrl, plant)
+    w3 = blocks.connect_systems(plant, comp, d_pname='in1')
+    w4 = blocks.connect_systems(plant, out)
+
+    ### test laplace_output
+    u = symbols('u')
+    siso = blocks.SISOSystem('SISO')
+    print(laplace_output(siso, [u]))
+    print(laplace_output(ctrl, [u]))
     
-print('\nDiagram Equations:')
-print(diagram_eqs)
-
-sol = sympy.solve(diagram_eqs, W.values()+ Out)
-
-#out = W[r.wires[3]]
-out = Out[0]
-
-Out_TF = sympy.simplify(sol[out]/In[0]) # TODO : define simplification so that it yields a nice fraction
-print('\nTransfer function:')
-print(Out_TF)
-
-### Apply a PI controller:
-
-Hp, Hc = TF.values()
-
-s = symbols('s')
-tau, K, Ti = symbols('tau K T_i')
-
-H = Out_TF.subs(Hp, 1/(1+tau*s)).subs(Hc, K+Ti/s)
-print('\n1st order plant with a PI controller')
-print(simplify(H))
+    ### Tranfer function:
+    Y_expr,Y,U = transfer_syst(root, depth=1)
+    print(Y_expr,Y,U)
+    TF = sympy.simplify(Y_expr[0]/U[0])
+    print('\nTransfer function:')
+    print(TF)
