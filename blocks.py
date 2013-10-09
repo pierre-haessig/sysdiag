@@ -14,21 +14,21 @@ class Source(System):
     '''generic signal input source ("generator")'''
     def __init__(self, name='In', parent=None):
         super(Source, self).__init__(name, parent)
-        self.add_port(OutputPort('out'))
+        self.add_port(OutputPort('out'), created_by_system = True)
 
 class Sink(System):
     '''generic signal output sink'''
     def __init__(self, name='Out', parent=None):
         super(Sink, self).__init__(name, parent)
-        self.add_port(InputPort('in'))
+        self.add_port(InputPort('in'), created_by_system = True)
     
 class SISOSystem(System):
     '''generic Single Input Single Output (SISO) system
     '''
     def __init__(self, name='S', parent=None):
         super(SISOSystem, self).__init__(name, parent)
-        self.add_port(InputPort('in'))
-        self.add_port(OutputPort('out'))
+        self.add_port(InputPort('in'), created_by_system = True)
+        self.add_port(OutputPort('out'), created_by_system = True)
 
 class TransferFunction(SISOSystem):
     '''Dynamical description of a Single Input Single Output (SISO) system
@@ -42,13 +42,13 @@ class TransferFunction(SISOSystem):
         self.params['den'] = den
 
 
-class Summation(System):    
+class Summation(System):
     '''Summation block'''
     VALID_OPS = ['+', '-']
     
     def __init__(self, name='Sum', ops=['+', '+'], parent=None):
         super(Summation, self).__init__(name, parent)
-        self.add_port(OutputPort('out'))
+        self.add_port(OutputPort('out'), created_by_system = True)
         self.set_operators(ops)
     
     def set_operators(self, ops):
@@ -56,7 +56,7 @@ class Summation(System):
         and add input Ports accordingly
         '''
         # flush the any existing list:
-        self._op = []
+        self._operators = []
         
         # Remove the input ports:
         in_ports = [p for p in self.ports if p.direction=='in']
@@ -67,8 +67,16 @@ class Summation(System):
             if not op_i in self.VALID_OPS:
                 raise ValueError("Operator '{:s}' is not valid!".format(str(op_i)))
             
-            self._op.append(op_i)
-            self.add_port(InputPort('in{:d}'.format(i)))
+            self._operators.append(op_i)
+            self.add_port(InputPort('in{:d}'.format(i)),
+                          created_by_system = True)
+    
+    def _to_json(self):
+        '''convert the Summation instance to a JSON-serializable object'''
+        dict_obj = super(Summation, self)._to_json()
+        dict_obj.update({'_operators': self._operators})
+        return dict_obj
+    # end _to_json
 
 def connect_systems(source, dest, s_pname='out', d_pname='in'):
     '''Connect systems `source` to `dest` using

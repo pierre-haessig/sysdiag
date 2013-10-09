@@ -22,6 +22,13 @@ Implement parent relationship for wires
 (sept 2013) DONE (basic version for signal blocks and wires)
 Implement incidence list retrieval
 
-(sept 2013)
+(sept 2013) DONE
 Make `connect_systems` function more generic rather than signal-specfic
 -> ability to have it derived in the elec module
+
+(oct 2013) DONE (json dump)
+Implement serialization/saving of a diagram (which format ?)
+
+(oct 2013)
+Implement load/deserialization from json format
+(mainly an issue of *reconstructing the connections*)
