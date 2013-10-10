@@ -122,35 +122,41 @@ def test_to_json():
     s = sysdiag.System('syst')
     s_dict = {'__class__': 'System',
               '__sysdiagclass__': 'System',
-              '__value__': {'name': 'syst',
+              'name': 'syst',
               'params': {},
               'ports': [],
               'subsystems': [],
-              'wires': []}}
+              'wires': []
+             }
     assert_equal(s._to_json(), s_dict)
 
     # An empty Wire (no connected ports):
     w = sysdiag.Wire('w1', 'type1')
     w_dict = {'__class__': 'Wire',
               '__sysdiagclass__': 'Wire',
-              '__value__': {'name': 'w1', 'ports': [], 'type': 'type1'}}
+              'name': 'w1',
+              'ports': [],
+              'type': 'type1'
+             }
     assert_equal(w._to_json(), w_dict)
 
     # A port:
     p = sysdiag.Port('p1', 'type1')
     p_dict = {'__class__': 'Port',
               '__sysdiagclass__': 'Port',
-              '__value__': {'name': 'p1', 'type': 'type1'}}
+              'name': 'p1',
+              'type': 'type1'
+             }
     assert_equal(p._to_json(), p_dict)
     
     # A system with some ports:
     s.add_port(p)
-    assert_equal(s._to_json()['__value__']['ports'], [p])
+    assert_equal(s._to_json()['ports'], [p])
     
     # A system with "default port" (i.e. created by the system)
     s.del_port(p)
     s.add_port(p, created_by_system=True)
-    assert_equal(s._to_json()['__value__']['ports'], [])
+    assert_equal(s._to_json()['ports'], [])
     
     # TODO : test a wire with connected ports:
 

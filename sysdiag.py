@@ -144,12 +144,11 @@ class System(object):
         ports_list = [p for p in self.ports if not p._created_by_system]
         return {'__sysdiagclass__': 'System',
                 '__class__': self.__class__.__name__,
-                '__value__':{'name':self.name,
-                             'subsystems':self.subsystems,
-                             'wires':self.wires,
-                             'ports':ports_list,
-                             'params':self.params
-                            }
+                'name':self.name,
+                'subsystems':self.subsystems,
+                'wires':self.wires,
+                'ports':ports_list,
+                'params':self.params
                }
     # end _to_json
     def json_dump(self, output=None, indent=2):
@@ -206,8 +205,8 @@ class Port(object):
         '''
         return {'__sysdiagclass__': 'Port',
                 '__class__': self.__class__.__name__,
-                '__value__':{'name':self.name,
-                             'type':self.type}
+                'name':self.name,
+                'type':self.type
                }
     # end _to_json
 
@@ -340,10 +339,9 @@ class Wire(object):
         
         return {'__sysdiagclass__': 'Wire',
                 '__class__': self.__class__.__name__,
-                '__value__':{'name':self.name,
-                             'type':self.type,
-                             'ports':[port_triplet(p) for p in self.ports]}
-
+                'name':self.name,
+                'type':self.type,
+                'ports':[port_triplet(p) for p in self.ports]
                }
     # end _to_json
 
