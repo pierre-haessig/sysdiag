@@ -48,9 +48,14 @@ class System(object):
     
     @property
     def ports_dict(self):
-        '''list of ports seen as a dict were names are the keys'''
+        '''dict of ports, which keys are the names of the ports'''
         return {p.name:p for p in self.ports}
-        
+
+    @property
+    def subsystems_dict(self):
+        '''dict of subsystems, which keys are the names of the systems'''
+        return {s.name:s for s in self.subsystems}
+
     def add_port(self, port, created_by_system = False):
         '''add a Port to the System'''
         if port in self.ports:
@@ -130,7 +135,23 @@ class System(object):
         if self.subsystems:
             s += '\n  Subsytems: {:s}'.format(str(self.subsystems))
         return s
-    
+
+    def __eq__(self, other):
+        '''Systems compare equal if its class and `name` and `params` are equal.
+        and also the same lists of ports, subsystems and wires.
+        
+        parent systems are not compared (would generate infinite recursion).
+        '''
+        if not isinstance(other, System):
+            return NotImplemented
+        return self.__class__  == other.__class__  and \
+               self.name       == other.name       and \
+               self.params     == other.params     and \
+               self.ports      == other.ports      and \
+               self.subsystems == other.subsystems and \
+               self.wires      == other.wires
+    # end __eq__()
+
     def _to_json(self):
         '''convert the System instance to a JSON-serializable object
         
@@ -142,8 +163,9 @@ class System(object):
         '''
         # Filter out ports created at the initialization of the system
         ports_list = [p for p in self.ports if not p._created_by_system]
+        cls_name = self.__module__ +'.'+ self.__class__.__name__
         return {'__sysdiagclass__': 'System',
-                '__class__': self.__class__.__name__,
+                '__class__': cls_name,
                 'name':self.name,
                 'subsystems':self.subsystems,
                 'wires':self.wires,
@@ -151,7 +173,7 @@ class System(object):
                 'params':self.params
                }
     # end _to_json
-    def json_dump(self, output=None, indent=2):
+    def json_dump(self, output=None, indent=2, sort_keys=True):
         '''dump (e.g. save) the System structure in json format
         
         if `output` is None: return a json string
@@ -159,9 +181,9 @@ class System(object):
         '''
         import json
         if output is None:
-            return json.dumps(self, default=to_json, indent=indent)
+            return json.dumps(self, default=to_json, indent=indent, sort_keys=sort_keys)
         else:
-            json.dump(self, output, default=to_json, indent=indent)
+            json.dump(self, output, default=to_json, indent=indent, sort_keys=sort_keys)
             return
         # end json_dump
 
@@ -198,13 +220,27 @@ class Port(object):
         s = repr(self) + ' of ' + repr(self.system)
         return s
     
+    def __eq__(self, other):
+        '''Ports compare equal if its class, `type` and `name` and  are equal.
+
+        (their parent system is not compared)
+        '''
+        return NotImplemented
+        if not isinstance(other, Port):
+            return NotImplemented
+        return self.__class__ == other.__class__ and \
+               self.type      == other.type      and \
+               self.name      == other.name
+
+    
     def _to_json(self):
         '''convert the Port instance to a JSON-serializable object
         
         Ports are serialized without any connectivity information
         '''
+        cls_name = self.__module__ +'.'+ self.__class__.__name__
         return {'__sysdiagclass__': 'Port',
-                '__class__': self.__class__.__name__,
+                '__class__': cls_name,
                 'name':self.name,
                 'type':self.type
                }
@@ -314,10 +350,45 @@ class Wire(object):
         # Book keeping of ports:
         self.ports.append(port)
     
+    @property
+    def ports_by_name(self):
+        '''triplet representation of port connections
+        (level, port.system.name, port.name)
+        
+        (used for serialization)
+        '''
+        def port_triplet(p):
+            '''triplet representation (level, port.system.name, port.name)'''
+            if p.system is self.parent:
+                level = 'parent'
+            elif p.system.parent is self.parent:
+                level = 'sibling'
+            else:
+                raise ValueError('The system of Port {}'.format(repr(p)) +\
+                                 'is neither a parent nor a sibling!')
+            return (level, p.system.name, p.name)
+
+        return [port_triplet(p) for p in self.ports]
+    
+    def connect_by_name(self, s_name, p_name, level='sibling'):
+        '''Connects the ports named `p_name` of system named `s_name`
+        to be found at level `level` ('parent' or 'sibling' (default))
+        '''
+        # TODO (?) merge the notion of level in the name (make parent a reserved name)
+        assert level in ['sibling', 'parent']
+        # 1) find the system:
+        if level == 'parent':
+            syst = self.parent
+            assert parent.name == s_name
+        elif level == 'sibling':
+            syst = self.parent.subsystems_dict[s_name]
+        port = syst.ports_dict[p_name]
+        self.connect_port(port, level)
+    
     def __repr__(self):
         cls_name = self.__class__.__name__
         s = '{:s}({:s}, {:s})'.format(cls_name, repr(self.name), repr(self.type))
-        return s    
+        return s
 
     def _to_json(self):
         '''convert the Wire instance to a JSON-serializable object
@@ -325,23 +396,13 @@ class Wire(object):
         Wires are serialized with the port connectivity in tuples
         (but parent relationship is not serialized)
         '''
-        def port_triplet(p):
-            '''triplet representation of port for serialization
-            (level, port.system.name, port.name)
-            '''
-            if p.system is self.parent:
-                level = 'parent'
-            elif p.system.parent is self.parent:
-                level = 'sibling'
-            else:
-                raise ValueError('The system of Port {} is neither a parent or a sibling!'.format(repr(p)))
-            return (level, p.system.name, p.name)
         
+        cls_name = self.__module__ +'.'+ self.__class__.__name__
         return {'__sysdiagclass__': 'Wire',
-                '__class__': self.__class__.__name__,
-                'name':self.name,
-                'type':self.type,
-                'ports':[port_triplet(p) for p in self.ports]
+                '__class__': cls_name,
+                'name': self.name,
+                'type': self.type,
+                'ports': self.ports_by_name
                }
     # end _to_json
 
@@ -445,3 +506,48 @@ def to_json(py_obj):
         
     raise TypeError(repr(py_obj) + ' is not JSON serializable')
 # end to_json
+
+import sys
+def _str_to_class(mod_class):
+    '''retreives the class from a "module.class" string'''
+    mod_name, cls_name = mod_class.split('.')
+    mod = sys.modules[mod_name]
+    return getattr(mod, cls_name)
+
+def from_json(json_object):
+    '''deserializes a sysdiag json object'''
+    if '__sysdiagclass__' in json_object:
+        cls = _str_to_class(json_object['__class__'])
+
+        if json_object['__sysdiagclass__'] == 'Port':
+            port = cls(name = json_object['name'], ptype = json_object['type'])
+            return port
+
+        if json_object['__sysdiagclass__'] == 'System':
+            # TODO: specialize the instanciation for each class using
+            # _from_json class methods
+            syst = cls(name = json_object['name'])
+            # add ports if any:
+            for p in json_object['ports']:
+                syst.add_port(p)
+            # add subsystems
+            for s in json_object['subsystems']:
+                syst.add_subsystem(s)
+            # add wires
+            for w_dict in json_object['wires']:
+                # 1) decode the wire:
+                w_cls = str_to_class(w_dict['__class__'])
+                w = w_cls(name = w_dict['name'], wtype = w_dict['type'])
+                syst.add_wire(w)
+                # make the connections:
+                for level, s_name, p_name in w_dict['ports']:
+                    w.connect_by_name(s_name, p_name, level)
+            # end for each wire
+            return syst
+
+    return json_object
+
+def json_load(json_dump):
+    import json
+    syst = json.loads(json_dump, object_hook=from_json)
+    return syst

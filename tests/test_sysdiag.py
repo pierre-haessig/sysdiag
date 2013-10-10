@@ -120,7 +120,7 @@ def test_to_json():
     '''basic test of JSON serialization of System, Wire and Port'''
     # An empty System
     s = sysdiag.System('syst')
-    s_dict = {'__class__': 'System',
+    s_dict = {'__class__': 'sysdiag.System',
               '__sysdiagclass__': 'System',
               'name': 'syst',
               'params': {},
@@ -132,7 +132,7 @@ def test_to_json():
 
     # An empty Wire (no connected ports):
     w = sysdiag.Wire('w1', 'type1')
-    w_dict = {'__class__': 'Wire',
+    w_dict = {'__class__': 'sysdiag.Wire',
               '__sysdiagclass__': 'Wire',
               'name': 'w1',
               'ports': [],
@@ -142,7 +142,7 @@ def test_to_json():
 
     # A port:
     p = sysdiag.Port('p1', 'type1')
-    p_dict = {'__class__': 'Port',
+    p_dict = {'__class__': 'sysdiag.Port',
               '__sysdiagclass__': 'Port',
               'name': 'p1',
               'type': 'type1'
@@ -160,3 +160,38 @@ def test_to_json():
     
     # TODO : test a wire with connected ports:
 
+def test_from_json():
+    '''basic test of JSON deserialization'''
+    s_json = '''{
+      "__class__": "sysdiag.System",
+      "__sysdiagclass__": "System",
+      "name": "my syst",
+      "params": {},
+      "ports": [],
+      "subsystems": [],
+      "wires": []
+    }'''
+    s = sysdiag.json_load(s_json)
+    assert_is(type(s), sysdiag.System)
+    assert_equal(s.name, "my syst")
+
+    # Test a port:
+    p_json = '''{
+      "__class__": "sysdiag.Port",
+      "__sysdiagclass__": "Port",
+      "name": "my port",
+      "type": ""
+    }'''
+    p = sysdiag.json_load(p_json)
+    assert_is(type(p), sysdiag.Port)
+    assert_equal(p.name, "my port")
+
+    # Test a wire:
+    w_json = '''{
+      "__class__": "sysdiag.Wire",
+      "__sysdiagclass__": "Wire",
+      "name": "W2",
+      "ports": []
+      "type": ""
+    }'''
+    # TODO: implement from_json classmethods

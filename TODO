@@ -29,6 +29,6 @@ Make `connect_systems` function more generic rather than signal-specfic
 (oct 2013) DONE (json dump)
 Implement serialization/saving of a diagram (which format ?)
 
-(oct 2013)
+(oct 2013) DONE (but yet to use classmethods instead of constructors)
 Implement load/deserialization from json format
 (mainly an issue of *reconstructing the connections*)
