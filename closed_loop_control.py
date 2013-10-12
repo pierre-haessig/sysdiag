@@ -35,5 +35,10 @@ inc_mat = blocks.incidence_matrix(root)
 print(inc_mat)
 
 
-
+# Serialize/Deserialize:
+r_json = root.json_dump()
+import sysdiag
+r1 = sysdiag.json_load(r_json)
+print('Serialize/Deserialize:')
+print('root == r1: {:s}'.format(str(root == r1)))
 

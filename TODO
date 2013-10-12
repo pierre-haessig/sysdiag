@@ -32,3 +32,8 @@ Implement serialization/saving of a diagram (which format ?)
 (oct 2013) DONE (but yet to use classmethods instead of constructors)
 Implement load/deserialization from json format
 (mainly an issue of *reconstructing the connections*)
+
+(oct 2013) DONE
+Implement equality/similarity for comparing Systems, Wires and Ports
+ * Systems have __eq__ ("real equality" test)
+ * Ports and Wires have _is_similar

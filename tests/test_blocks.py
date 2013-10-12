@@ -92,3 +92,36 @@ def test_closed_loop_diagram():
     # Check that the reuse of wires:
     assert_equal(w3, w4)
     print(root)
+
+def test_json():
+    '''basic test of JSON serialization/deserialization'''
+    # PI controller block (example of Laplace tranfer)
+    K = 1
+    Ti = 0.1
+    ctrl = blocks.TransferFunction('controller', [1, K*Ti],[0, Ti])
+    s_json = '''{
+      "__class__": "blocks.TransferFunction",
+      "__sysdiagclass__": "System",
+      "name": "controller",
+      "params": {
+        "den": [
+          0,
+          0.1
+        ],
+        "num": [
+          1,
+          0.1
+        ]
+      },
+      "ports": [],
+      "subsystems": [],
+      "wires": []
+    }'''
+    # Compare JSON without whitespaces:
+    assert_equal(ctrl.json_dump().replace(' ',''), s_json.replace(' ',''))
+    
+    import sysdiag
+    ctrl1 = sysdiag.json_load(s_json)
+    assert_is(type(ctrl1), blocks.TransferFunction)
+    assert_equal(ctrl1.name, "controller")
+    assert_equal(ctrl, ctrl1)

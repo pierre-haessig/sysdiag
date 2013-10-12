@@ -30,6 +30,51 @@ def test_create_name():
     assert_equal(create(['a'],'a'), 'a0')
     assert_equal(create(['a', 'a0'],'a'), 'a1')
 
+def test_is_similar():
+    '''check the similarity test of Ports and Wires'''
+    # Ports:
+    p1 = sysdiag.Port('p1', 'type1')
+    p1a = sysdiag.Port('p1', 'type1')
+    p12 = sysdiag.Port('p1', 'type2')
+    p1_in = sysdiag.InputPort('p1', 'type1')
+    p2 = sysdiag.Port('p2', 'type1')
+    # Check similarity
+    assert_true(p1._is_similar(p1))
+    assert_true(p1._is_similar(p1a))
+    # Check dissimilarity
+    assert_true(not p1._is_similar(p12))
+    assert_true(not p1._is_similar(p1_in))
+    assert_true(not p1._is_similar(p2))
+
+    # Wires
+    w1 = sysdiag.Wire('w1', 'type1')
+    w1a = sysdiag.Wire('w1', 'type1')
+    w12 = sysdiag.Wire('w1', 'type2')
+    w1_in = sysdiag.SignalWire('w1', 'type1')
+    w2 = sysdiag.Wire('w2', 'type1')
+    # Check similarity
+    assert_true(w1._is_similar(w1))
+    assert_true(w1._is_similar(w1a))
+    # Check dissimilarity
+    assert_true(not w1._is_similar(w12))
+    assert_true(not w1._is_similar(w1_in))
+    assert_true(not w1._is_similar(w2))
+
+    # TODO: check wires with connected ports:
+
+def test_system_eq():
+    '''test equality of systems'''
+    # Some empty systems:
+    s1 = sysdiag.System('syst1')
+    s1a = sysdiag.System('syst1')
+    s2 = sysdiag.System('syst2')
+    assert_equal(s1,s1)
+    assert_true(not s1 != s1)
+    assert_equal(s1,s1a)
+    assert_true(not s1 != s1a)
+    assert_true(not s1 == s2)
+    assert_true(s1 != s2)
+    
 
 def test_add_subsystem():
     '''check the add_subsystem machinery'''

@@ -137,20 +137,38 @@ class System(object):
         return s
 
     def __eq__(self, other):
-        '''Systems compare equal if its class and `name` and `params` are equal.
-        and also the same lists of ports, subsystems and wires.
+        '''Systems compare equal if their class, `name` and `params` are equal.
+        and also their lists of ports and wires are *similar*
+        (see `_is_similar` methods of Port and Wire)
+        and finally their subsystems recursively compare equal.
         
         parent systems are not compared (would generate infinite recursion).
         '''
         if not isinstance(other, System):
             return NotImplemented
-        return self.__class__  == other.__class__  and \
-               self.name       == other.name       and \
-               self.params     == other.params     and \
-               self.ports      == other.ports      and \
-               self.subsystems == other.subsystems and \
-               self.wires      == other.wires
+        # Basic similarity
+        basic_sim = self.__class__  == other.__class__  and \
+                    self.name       == other.name       and \
+                    self.params     == other.params
+        if not basic_sim:
+            return False
+        # Port similarity: (sensitive to the order)
+        ports_sim = all(p1._is_similar(p2) for (p1,p2)
+                        in zip(self.ports, other.ports))
+        if not ports_sim:
+            return False
+        # Wires similarity
+        wires_sim = all(w1._is_similar(w2) for (w1,w2)
+                        in zip(self.wires, other.wires))
+        if not wires_sim:
+            return False
+        print('equality at level {} is true'.format(self.name))
+        # Since everything matches, compare subsystems:
+        return self.subsystems == other.subsystems
     # end __eq__()
+    
+    def __ne__(self,other):
+        return not (self==other)
 
     def _to_json(self):
         '''convert the System instance to a JSON-serializable object
@@ -220,18 +238,16 @@ class Port(object):
         s = repr(self) + ' of ' + repr(self.system)
         return s
     
-    def __eq__(self, other):
-        '''Ports compare equal if its class, `type` and `name` and  are equal.
+    def _is_similar(self, other):
+        '''Ports are *similar* if their class, `type` and `name`  are equal.
 
-        (their parent system is not compared)
+        (their parent system are not compared)
         '''
-        return NotImplemented
         if not isinstance(other, Port):
             return NotImplemented
         return self.__class__ == other.__class__ and \
                self.type      == other.type      and \
                self.name      == other.name
-
     
     def _to_json(self):
         '''convert the Port instance to a JSON-serializable object
@@ -384,11 +400,24 @@ class Wire(object):
             syst = self.parent.subsystems_dict[s_name]
         port = syst.ports_dict[p_name]
         self.connect_port(port, level)
-    
+
     def __repr__(self):
         cls_name = self.__class__.__name__
         s = '{:s}({:s}, {:s})'.format(cls_name, repr(self.name), repr(self.type))
         return s
+
+    def _is_similar(self, other):
+        '''Wires are *similar* if their class, `type` and `name`  are equal
+        and if their connectivity (`ports_by_name`) is the same
+
+        (their parent system are not compared)
+        '''
+        if not isinstance(other, Wire):
+            return NotImplemented
+        return self.__class__ == other.__class__ and \
+               self.type      == other.type      and \
+               self.name      == other.name      and \
+               self.ports_by_name == other.ports_by_name
 
     def _to_json(self):
         '''convert the Wire instance to a JSON-serializable object
@@ -536,7 +565,7 @@ def from_json(json_object):
             # add wires
             for w_dict in json_object['wires']:
                 # 1) decode the wire:
-                w_cls = str_to_class(w_dict['__class__'])
+                w_cls = _str_to_class(w_dict['__class__'])
                 w = w_cls(name = w_dict['name'], wtype = w_dict['type'])
                 syst.add_wire(w)
                 # make the connections:
