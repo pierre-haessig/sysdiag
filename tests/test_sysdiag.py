@@ -74,7 +74,26 @@ def test_system_eq():
     assert_true(not s1 != s1a)
     assert_true(not s1 == s2)
     assert_true(s1 != s2)
-    
+
+
+def test_is_empty():
+    '''test definition of the *emptyness* of a System'''
+    s1 = sysdiag.System('syst1')
+    assert_true(s1.is_empty())
+    # System with one subsystem:
+    s1 = sysdiag.System('syst1')
+    s1.add_subsystem(sysdiag.System('syst2'))
+    assert_true(not s1.is_empty())
+    # System with one wire:
+    s1 = sysdiag.System('syst1')
+    s1.add_wire(sysdiag.Wire('w1', 'type1'))
+    assert_true(not s1.is_empty())
+    # System with one subsystem and one wire:
+    s1 = sysdiag.System('syst1')
+    s1.add_wire(sysdiag.Wire('w1', 'type1'))
+    s1.add_subsystem(sysdiag.System('syst2'))
+    assert_true(not s1.is_empty())
+
 
 def test_add_subsystem():
     '''check the add_subsystem machinery'''

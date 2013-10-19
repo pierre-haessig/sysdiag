@@ -45,7 +45,12 @@ class System(object):
         # If a parent system is provided, request its addition as a subsystem
         if parent is not None:
             parent.add_subsystem(self)
-    
+    #end __init__()
+
+    def is_empty(self):
+        '''True if the System contains no subsystems and no wires'''
+        return (not self.subsystems) and (not self.wires)
+
     @property
     def ports_dict(self):
         '''dict of ports, which keys are the names of the ports'''
@@ -71,7 +76,7 @@ class System(object):
         port.system = self
         port._created_by_system = bool(created_by_system)
         self.ports.append(port)
-    
+
     def del_port(self, port):
         '''delete a Port of the System (and disconnect any connected wire)
         '''
@@ -80,7 +85,7 @@ class System(object):
             raise NotImplementedError('Cannot yet delete a connected Port')
         # Remove the ports list:
         self.ports.remove(port)
-    
+
     def add_subsystem(self, subsys):
         # 1) Check name uniqueness
         name = subsys.name
