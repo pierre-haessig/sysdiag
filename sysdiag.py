@@ -80,7 +80,7 @@ class System(object):
     def del_port(self, port):
         '''delete a Port of the System (and disconnect any connected wire)
         '''
-        if port.wire is not None:
+        if (port.wire is not None) or (port.internal_wire is not None):
             # TODO : implement the wire disconnection
             raise NotImplementedError('Cannot yet delete a connected Port')
         # Remove the ports list:
@@ -400,7 +400,7 @@ class Wire(object):
         # 1) find the system:
         if level == 'parent':
             syst = self.parent
-            assert parent.name == s_name
+            assert self.parent.name == s_name
         elif level == 'sibling':
             syst = self.parent.subsystems_dict[s_name]
         port = syst.ports_dict[p_name]
@@ -477,6 +477,14 @@ class SignalWire(Wire):
                * a sibling system'port with direction == 'out' or
                * a parent system'port with direction == 'in'
             '''
+            if level=='detect':
+                wire = self
+                if wire.parent == port.system:
+                    level = 'parent'
+                elif wire.parent == port.system.parent:
+                    level = 'sibling'
+                else:
+                    raise ValueError('Port is neither sibling nor parent')
             is_out = (level=='sibling' and port.direction == 'out') or \
                      (level=='parent'  and port.direction == 'in')
             return is_out
@@ -484,7 +492,7 @@ class SignalWire(Wire):
         # Now we have an I/O Port for sure:    
         if is_output(port, port_level):
             # check that there is not already a signal source
-            other_ports = [p for p in self.ports if (is_output(p, port_level)
+            other_ports = [p for p in self.ports if (is_output(p, 'detect')
                                                      and p is not port)]
             if other_ports:
                 if raise_error:

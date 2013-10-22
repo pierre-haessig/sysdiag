@@ -59,10 +59,26 @@ def test_simple_connection():
     assert tf2.ports_dict['out'] in w2.ports
     assert tf3.ports_dict['in'] in w2.ports
 
-    # Print status:
-    print(r)
-    print('')
-    print(tf1)
+def test_parent_connection():
+    '''Connectivity bewteen subsystems and the parent'''
+    r = blocks.SISOSystem('root')
+    s = blocks.SISOSystem('subsyst', parent=r)
+    w1 = blocks.SignalWire('w1', parent=r)
+    w2 = blocks.SignalWire('w2', parent=r)
+    # Make the connections:
+    w1.connect_by_name('root', 'in', 'parent')
+    w1.connect_by_name('subsyst', 'in', 'sibling')
+    w2.connect_by_name('subsyst', 'out', 'sibling')
+    w2.connect_by_name('root', 'out', 'parent')
+    # Check the connections:
+    assert r.ports_dict['in']  in w1.ports
+    assert r.ports_dict['out'] in w2.ports
+    assert s.ports_dict['in']  in w1.ports
+    assert s.ports_dict['out'] in w2.ports
+    assert_is(r.ports_dict['in'].internal_wire, w1)
+    assert_is(s.ports_dict['in'].wire, w1)
+    assert_is(r.ports_dict['out'].internal_wire, w2)
+    assert_is(s.ports_dict['in'].wire, w1)
 
 
 def test_closed_loop_diagram():
