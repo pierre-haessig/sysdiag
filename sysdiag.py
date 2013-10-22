@@ -569,6 +569,7 @@ def from_json(json_object):
             # TODO: specialize the instanciation for each class using
             # _from_json class methods
             syst = cls(name = json_object['name'])
+            syst.params = json_object['params']
             # add ports if any:
             for p in json_object['ports']:
                 syst.add_port(p)
