@@ -91,7 +91,7 @@ def transfer_syst(syst, input_var=None, depth='unlimited'):
     
     output_expr = []
     
-    if depth==0:
+    if depth==0 or syst.is_empty():
         #output_expr = laplace_output(syst, input_var)
         #return [Eq(var, tf) for var,tf in zip(output_var,output_expr)]
         output_expr = laplace_output(syst, input_var)
@@ -142,11 +142,21 @@ def transfer_syst(syst, input_var=None, depth='unlimited'):
             subsys_eqs.extend([Eq(var, tf) for var,tf in
                                zip(sub_var_out, sub_output_expr)])
     # end for each subsystem
-    
-    # Add the output port equations
+
+    # Add the input and output port equations (internal connectivity of syst.ports)
+    for p, p_var in zip(in_ports, input_var):
+        w = p.internal_wire
+        if w is None:
+            print('Warning, input port {.name} is not internally connected'.format(p))
+        subsys_eqs.append(Eq(wires_var[w], p_var))
+    for p, p_var in zip(out_ports, output_var):
+        w = p.internal_wire
+        if w is None:
+            print('Warning, output port {.name} is not internally connected'.format(p))
+        subsys_eqs.append(Eq(p_var, wires_var[w]))
     # TODO...
     #subsys_eqs.append(Eq())
-        
+    
     # Solve the equations:
     print(subsys_eqs)
     eqs_sol = sympy.solve(subsys_eqs, wires_var.values() + output_var)
@@ -170,6 +180,16 @@ if __name__ == '__main__':
     ctrl = blocks.SISOSystem('controller', root) # generic controller
     #plant = blocks.TransferFunction('plant', [1], [0, 1], root) # integrator
     plant = blocks.SISOSystem('plant', root) # generic plant
+    # Add subsystems inside the plant
+    integrator = blocks.TransferFunction('int', [1], [0, 1]) # integrator
+    plant.add_subsystem(integrator)
+    wp1 = blocks.SignalWire('wp1', parent=plant)
+    wp2 = blocks.SignalWire('wp2', parent=plant)
+    wp1.connect_by_name('plant','in','parent')
+    wp1.connect_by_name('int','in')
+    wp2.connect_by_name('plant','out','parent')
+    wp2.connect_by_name('int','out')
+
     comp = blocks.Summation('compare', ops = ['+','-'], parent = root)
     out = blocks.Sink('out',parent=root)
     # Connect the blocks together
